@@ -1,0 +1,199 @@
+{% extends 'student/studentbase.html' %}
+{% block content %}
+{% load static %}
+
+<head>
+  <link href="//netdna.bootstrapcdn.com/bootstrap/3.0.0/css/bootstrap.min.css" rel="stylesheet" id="bootstrap-css">
+  <script src="//netdna.bootstrapcdn.com/bootstrap/3.0.0/js/bootstrap.min.js"></script>
+  <script src="//code.jquery.com/jquery-1.11.1.min.js"></script>
+</head>
+
+<div class="jumbotron my-4">
+  <div id="warning-message" class="alert alert-danger" style="display: none;">
+    <strong>Warning!</strong> Tab switching detected. This incident has been recorded. Please return to the exam immediately.
+  </div>
+
+  <!-- Timer Display -->
+  <div id="timer" class="alert alert-info" style="text-align: center;">
+    Time Remaining: <span id="time">00:00</span>
+  </div>
+
+  <form id="examForm" class="form" autocomplete="off" onsubmit="return saveAns()" action="/student/calculate-marks" method="POST">
+    {% csrf_token %}
+    <h2 style="text-align: center;">Course: {{course.course_name}}</h2>
+    {% for q in questions %}
+    <h3 class="text-danger">{{ forloop.counter }}. {{q.question}}</h3>
+    <h4 style="text-align: right;">[{{q.marks}} Marks]</h4>
+    
+    <input type="hidden" name="csrfmiddlewaretoken" value="C24rUotmdHawVQJL3KrqiWxvti8UffOFYUc8TRbZtLt36AVLdP3jbkzUVe3beRAa">
+    
+    <div class="form-check mx-4">
+      <input class="form-check-input" type="radio" name="{{ forloop.counter }}" id="{{q.option1}}" value="Option1">
+      <label class="form-check-label" for="option1">
+        {{q.option1}}
+      </label>
+    </div>
+
+    <div class="form-check mx-4">
+      <input class="form-check-input" type="radio" name="{{ forloop.counter }}" id="{{q.option2}}" value="Option2">
+      <label class="form-check-label" for="option2">
+        {{q.option2}}
+      </label>
+    </div>
+
+    <div class="form-check mx-4">
+      <input class="form-check-input" type="radio" name="{{ forloop.counter }}" id="{{q.option3}}" value="Option3">
+      <label class="form-check-label" for="option3">
+        {{q.option3}}
+      </label>
+    </div>
+
+    <div class="form-check mx-4">
+      <input class="form-check-input" type="radio" name="{{ forloop.counter }}" id="{{q.option4}}" value="Option4">
+      <label class="form-check-label" for="option4">
+        {{q.option4}}
+      </label>
+    </div>
+
+    {% endfor %}
+    <input class="btn btn-success btn-lg" style="border-radius: 0%;" type="submit" value="Submit Answers">  
+  </form>
+</div>
+
+<script> 
+    var tabSwitchCount = 0;
+    var isTabVisible = true;
+    var examId = "{{ course.id }}"; // Get the exam ID from Django context
+    var csrfToken = document.getElementsByName('csrfmiddlewaretoken')[0].value;
+
+    // Function to save answers
+    function saveAns() {  
+        var ele = document.getElementsByTagName('input'); 
+        for (i = 0; i < ele.length; i++) { 
+            if (ele[i].type == "radio") { 
+                if (ele[i].checked) {        
+                    setCookie(ele[i].name, ele[i].value, 3);
+                }
+            } 
+        } 
+        return true;  
+    }
+    
+    function setCookie(cname, cvalue, exdays) {
+        var d = new Date();
+        d.setTime(d.getTime() + (exdays * 24 * 60 * 60 * 1000));
+        var expires = "expires=" + d.toUTCString();
+        document.cookie = cname + "=" + cvalue + ";" + expires + ";path=/";
+    }
+
+    // Timer Functionality
+    var timeLeft = {{ course.time_limit }} * 60;  // 1 minute in seconds
+    var timerElement = document.getElementById('time');
+    var examForm = document.getElementById('examForm');
+
+    function startTimer() {
+        var timer = setInterval(function() {
+            var minutes = Math.floor(timeLeft / 60);
+            var seconds = timeLeft % 60;
+            timerElement.textContent = (minutes < 10 ? "0" + minutes : minutes) + ":" + (seconds < 10 ? "0" + seconds : seconds);
+
+            if (timeLeft <= 0) {
+                clearInterval(timer);
+                timerElement.textContent = "00:00";
+                saveAns(); // Save answers to cookies
+                examForm.submit(); // Trigger form submission silently
+            }
+            timeLeft--;
+        }, 1000); // Update every second
+    }
+
+    // Start the timer when the page loads
+    window.onload = function() {
+        startTimer();
+    };
+
+    // Handle tab visibility changes
+    document.addEventListener('visibilitychange', function() {
+        if (document.hidden) {
+            isTabVisible = false;
+            tabSwitchCount++;
+            showWarning();
+            logTabSwitch();
+        } else {
+            isTabVisible = true;
+            setTimeout(function() {
+                hideWarning();
+            }, 3000);
+        }
+    });
+
+    // Detect when the user switches to another window
+    window.addEventListener('blur', function() {
+        isTabVisible = false;
+        tabSwitchCount++;
+        showWarning();
+        logTabSwitch();
+    });
+
+    // Detect when the user returns to this window
+    window.addEventListener('focus', function() {
+        isTabVisible = true;
+        setTimeout(function() {
+            hideWarning();
+        }, 3000);
+    });
+
+    // Display warning message
+    function showWarning() {
+        document.getElementById('warning-message').style.display = 'block';
+    }
+
+    // Hide warning message
+    function hideWarning() {
+        document.getElementById('warning-message').style.display = 'none';
+    }
+
+    // Log tab switch to server
+    function logTabSwitch() {
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', '/student/log-tab-switch/', true);
+        xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+        xhr.setRequestHeader('X-CSRFToken', csrfToken);
+        xhr.onload = function() {
+            if (xhr.status === 200) {
+                console.log('Tab switch logged successfully');
+            } else {
+                console.error('Error logging tab switch');
+            }
+        };
+        
+        // Include details with tab switch count
+        var details = `Tab Switches: ${tabSwitchCount}`;
+        console.log('df',tabSwitchCount)
+        console.log('exid',examId,'tabSwitchCount',tabSwitchCount,'details',details);
+        xhr.send('exam_id=' + examId + '&tab_switch_count=' + tabSwitchCount + '&details=' + encodeURIComponent(details));
+    }
+
+    // Prevent right-click to avoid context menu
+    document.addEventListener('contextmenu', function(e) {
+        e.preventDefault();
+        return false;
+    });
+
+    // Prevent keyboard shortcuts that could be used to switch tabs
+    document.addEventListener('keydown', function(e) {
+        if (e.altKey || (e.ctrlKey && (e.key === 't' || e.key === 'n' || e.key === 'w')) || e.key === 'F5') {
+            e.preventDefault();
+            return false;
+        }
+    });
+
+    // Display a confirmation dialog when the user tries to close or refresh the page
+    window.addEventListener('beforeunload', function(e) {
+        e.preventDefault();
+        e.returnValue = 'Are you sure you want to leave the exam? This will be recorded.';
+    });
+</script>
+
+<br><br><br><br><br><br>
+{% endblock content %}

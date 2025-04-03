@@ -1,0 +1,6 @@
+{% extends 'student/studentbase.html' %}
+{% block content %}
+<h2>Exam Already Taken</h2>
+<p>You have already completed the exam: {{ course.course_name }}.</p>
+<a href="{% url 'student-exam' %}">Back to Available Exams</a>
+{% endblock %}

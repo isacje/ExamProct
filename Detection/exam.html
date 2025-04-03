@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Camera and Activity Detection</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/blazeface"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            justify-content: space-between;
+        }
+        #camera {
+            width: 50%;
+            height: 100vh;
+            background: black;
+        }
+        #status {
+            width: 50%;
+            padding: 20px;
+        }
+        .message {
+            color: red;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <video id="camera" autoplay muted></video>
+    <div id="status">
+        <h1>Status:</h1>
+        <p><strong>Human Detection:</strong> <span id="human-status">Loading...</span></p>
+        <p><strong>Looking at Camera:</strong> <span id="focus-status">Loading...</span></p>
+        <p><strong>Tab Active:</strong> <span id="tab-status">Loading...</span></p>
+        <p><strong>New Tab Opened:</strong> <span id="new-tab-status" class="message">Monitoring...</span></p>
+    </div>
+
+    <script>
+        const camera = document.getElementById('camera');
+        const humanStatus = document.getElementById('human-status');
+        const focusStatus = document.getElementById('focus-status');
+        const tabStatus = document.getElementById('tab-status');
+        const newTabStatus = document.getElementById('new-tab-status');
+
+        let faceModel = null;
+        let wasTabActive = true;
+
+        // Initialize the camera
+        async function startCamera() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                camera.srcObject = stream;
+                camera.play();
+            } catch (err) {
+                console.error('Error accessing the camera:', err);
+                humanStatus.textContent = 'Camera not accessible!';
+            }
+        }
+
+        // Load the BlazeFace model for face detection
+        async function loadFaceModel() {
+            faceModel = await blazeface.load();
+            console.log('BlazeFace model loaded.');
+        }
+
+        // Detect human faces in the video feed
+        async function detectHuman() {
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+
+            canvas.width = camera.videoWidth;
+            canvas.height = camera.videoHeight;
+
+            setInterval(async () => {
+                if (faceModel && camera.readyState === HTMLMediaElement.HAVE_ENOUGH_DATA) {
+                    context.drawImage(camera, 0, 0, canvas.width, canvas.height);
+                    const predictions = await faceModel.estimateFaces(canvas, false);
+
+                    if (predictions.length > 0) {
+                        humanStatus.textContent = 'Human detected';
+                        focusStatus.textContent = 'Yes (Assumed based on face presence)';
+                    } else {
+                        humanStatus.textContent = 'No human detected';
+                        focusStatus.textContent = 'No';
+                    }
+                }
+            }, 500);
+        }
+
+        // Check if the tab is active or inactive
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                tabStatus.textContent = 'Inactive';
+                wasTabActive = false;
+            } else {
+                tabStatus.textContent = 'Active';
+                if (!wasTabActive) {
+                    showNewTabMessage();
+                }
+                wasTabActive = true;
+            }
+        });
+
+        // Check for focus and blur events to detect tab switching
+        window.addEventListener('blur', () => {
+            wasTabActive = false;
+        });
+
+        window.addEventListener('focus', () => {
+            if (!wasTabActive) {
+                showNewTabMessage();
+            }
+            wasTabActive = true;
+        });
+
+        // Show a message when a new tab is opened or switched to
+        function showNewTabMessage() {
+            newTabStatus.textContent = 'New tab detected!';
+            newTabStatus.style.color = 'red';
+
+            setTimeout(() => {
+                newTabStatus.textContent = 'Monitoring...';
+                newTabStatus.style.color = '';
+            }, 3000); // Reset message after 3 seconds
+        }
+
+        // Initialize everything
+        async function initialize() {
+            await startCamera();
+            await loadFaceModel();
+            detectHuman();
+        }
+
+        initialize();
+    </script>
+</body>
+</html>
