@@ -1,3 +1,8 @@
+Sure! Here's the **fully edited `README.md`** content with your updated setup and installation steps:
+
+---
+
+```markdown
 # ExamProct: AI-Powered Online Exam Proctoring System  
 
 **ExamProct** is an advanced AI-driven online exam proctoring system designed to ensure the integrity of remote assessments. Using **deep learning, computer vision, and real-time monitoring**, it detects cheating behaviors and provides automated alerts to proctors.  
@@ -35,18 +40,27 @@
    git clone https://github.com/yourusername/ExamProct.git  
    cd ExamProct  
    ```  
-2. Install dependencies:  
+2. Create and activate a virtual environment:  
    ```bash
+   python -m venv vir  
+   vir\Scripts\activate  
+   ```  
+3. Install required packages:  
+   ```bash
+   pip install dlib-19.22.99-cp310-cp310-win_amd64.whl  
    pip install -r requirements.txt  
    ```  
-3. Start the server:  
+4. Fix NumPy compatibility (optional):  
    ```bash
-   python app.py  
+   pip uninstall numpy  
+   pip install numpy==1.24.0  
    ```  
+5. Start the server:  
+   ```bash
+   python manage.py runserver  
+   ```
 
 ## 📌 Future Enhancements  
 - **Voice Detection** to monitor for unauthorized conversations.  
 - **AI-powered Behavior Analysis** for advanced cheating detection.  
 - **Multi-language Support** for broader accessibility.  
-
-📢 **Contributions are welcome!** Feel free to fork, submit issues, and improve ExamProct. Let's make online exams more secure! 🚀
