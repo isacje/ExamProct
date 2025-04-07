@@ -1,8 +1,3 @@
-Sure! Here's the **fully edited `README.md`** content with your updated setup and installation steps:
-
----
-
-```markdown
 # ExamProct: AI-Powered Online Exam Proctoring System  
 
 **ExamProct** is an advanced AI-driven online exam proctoring system designed to ensure the integrity of remote assessments. Using **deep learning, computer vision, and real-time monitoring**, it detects cheating behaviors and provides automated alerts to proctors.  
